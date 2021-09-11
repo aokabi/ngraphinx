@@ -50,7 +50,7 @@ func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath str
 	// 表示項目の設定
 	p.Title.Text = "access.log"
 	p.X.Label.Text = "time"
-	p.Y.Label.Text = "request time average"
+	p.Y.Label.Text = "request time sum / sec"
 
 	logs, err := GetNginxAccessLog(nginxAccessLogFilepath)
 	if err != nil {
@@ -107,21 +107,38 @@ func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath str
 		}
 	}
 
-	pointsList := make([]interface{}, 0)
+	// Legend が挿入順に生成されるため、時間総和数でソートする用途
+	type NameAndPoints struct {
+		name     string
+		points   plotter.XYs
+		countSum float64
+	}
+	nameAndPoints := []NameAndPoints{}
+
 	// plotするにはplotter.XYs型に変換する必要がある
 	for k, v := range pointsMap {
 		points := make(plotter.XYs, len(v))
 		i := 0
+		countSum := 0.0
 		for x, y := range v {
 			points[i].X = x - minTime
-			points[i].Y = float64(y.time) / float64(y.count)
+			points[i].Y = float64(y.time) // / float64(y.count)
+			// points[i].Y = float64(y.time) / float64(y.count) // if average
+			countSum += points[i].Y
 			i++
 		}
 		// sort points by x
 		sort.Slice(points, func(i, j int) bool {
 			return points[i].X < points[j].X
 		})
-		pointsList = append(pointsList, k, points)
+		nameAndPoints = append(nameAndPoints, NameAndPoints{k, points, countSum})
+	}
+	sort.Slice(nameAndPoints, func(i, j int) bool {
+		return nameAndPoints[i].countSum > nameAndPoints[j].countSum
+	})
+	pointsList := make([]interface{}, 0)
+	for _, v := range nameAndPoints {
+		pointsList = append(pointsList, v.name, v.points)
 	}
 	// plotter.XYs型に変換してplot.Addを呼び出す
 	if err := plotutil.AddLinePoints(p, pointsList...); err != nil {
@@ -193,21 +210,37 @@ func generateCountGraph(aggregates []string, nginxAccessLogFilepath string) (*pl
 		}
 	}
 
-	pointsList := make([]interface{}, 0)
+	// Legend が挿入順に生成されるため、リクエスト数でソートする用途
+	type NameAndPoints struct {
+		name     string
+		points   plotter.XYs
+		countSum float64
+	}
+	nameAndPoints := []NameAndPoints{}
 	// plotするにはplotter.XYs型に変換する必要がある
 	for k, v := range pointsMap {
 		points := make(plotter.XYs, len(v))
 		i := 0
+		countSum := 0.0
 		for x, y := range v {
 			points[i].X = x - minTime
 			points[i].Y = y
 			i++
+			countSum += y
 		}
+
 		// sort points by x
 		sort.Slice(points, func(i, j int) bool {
 			return points[i].X < points[j].X
 		})
-		pointsList = append(pointsList, k, points)
+		nameAndPoints = append(nameAndPoints, NameAndPoints{k, points, countSum})
+	}
+	sort.Slice(nameAndPoints, func(i, j int) bool {
+		return nameAndPoints[i].countSum > nameAndPoints[j].countSum
+	})
+	pointsList := make([]interface{}, 0)
+	for _, v := range nameAndPoints {
+		pointsList = append(pointsList, v.name, v.points)
 	}
 	// plotter.XYs型に変換してplot.Addを呼び出す
 	if err := plotutil.AddLinePoints(p, pointsList...); err != nil {
@@ -232,12 +265,12 @@ func GenerateGraph(aggregates []string, nginxAccessLogFilepath string, option *O
 			var p *plot.Plot
 			var err error
 			if j == 0 {
-				p, err = generateCountGraph(aggregates, nginxAccessLogFilepath)
+				p, err = generateReqTimeAverageGraph(aggregates, nginxAccessLogFilepath)
 				if err != nil {
 					return err
 				}
 			} else {
-				p, err = generateReqTimeAverageGraph(aggregates, nginxAccessLogFilepath)
+				p, err = generateCountGraph(aggregates, nginxAccessLogFilepath)
 				if err != nil {
 					return err
 				}

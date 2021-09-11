@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/aokabi/ngraphinx/lib"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -12,7 +14,8 @@ var (
 
 	rootCmd = &cobra.Command{
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return lib.GenerateGraph([]string{}, nginxAccessLogFilepath)
+			regStrs := strings.Split(aggregates, ",")
+			return lib.GenerateGraph(regStrs, nginxAccessLogFilepath)
 		},
 	}
 

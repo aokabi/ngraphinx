@@ -49,6 +49,10 @@ func (l *log) GetEndPoint() (string, error) {
 	return u.Path, nil
 }
 
+func (l *log) GetMethod() string {
+	return strings.Split(l.Req, " ")[0]
+}
+
 func GetNginxAccessLog(filepath string) ([]log, error) {
 	file, err := os.Open(filepath)
 	if err != nil {

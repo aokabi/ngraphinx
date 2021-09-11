@@ -61,7 +61,6 @@ func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath str
 
 	for i, aggregate := range aggregates {
 		rg[i] = regexp.MustCompile(aggregate)
-		pointsMap[aggregate] = make(map[float64]*summary)
 	}
 
 	minTime := math.MaxFloat64
@@ -75,14 +74,17 @@ func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath str
 
 		for _, r := range rg {
 			if r.MatchString(endpoint) {
-				if _, ok := pointsMap[r.String()][convertTimeToX(v.Time.Time)]; !ok {
-					pointsMap[r.String()][convertTimeToX(v.Time.Time)] = &summary{
+				if _, ok := pointsMap[makeKey(v.GetMethod(), r.String())]; !ok {
+					pointsMap[makeKey(v.GetMethod(), r.String())] = make(map[float64]*summary)
+				}
+				if _, ok := pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)]; !ok {
+					pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)] = &summary{
 						count: 0,
 						time:  0,
 					}
 				}
-				pointsMap[r.String()][convertTimeToX(v.Time.Time)].count += 1
-				pointsMap[r.String()][convertTimeToX(v.Time.Time)].time += v.ReqTime
+				pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)].count += 1
+				pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)].time += v.ReqTime
 				minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
 				noMatch = false
 				break
@@ -90,17 +92,17 @@ func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath str
 		}
 		// どれにもマッチしなかったら
 		if noMatch {
-			if _, ok := pointsMap[endpoint]; !ok {
-				pointsMap[endpoint] = make(map[float64]*summary)
+			if _, ok := pointsMap[makeKey(v.GetMethod(), endpoint)]; !ok {
+				pointsMap[makeKey(v.GetMethod(), endpoint)] = make(map[float64]*summary)
 			}
-			if _, ok := pointsMap[endpoint][convertTimeToX(v.Time.Time)]; !ok {
-				pointsMap[endpoint][convertTimeToX(v.Time.Time)] = &summary{
+			if _, ok := pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)]; !ok {
+				pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)] = &summary{
 					count: 0,
 					time:  0,
 				}
 			}
-			pointsMap[endpoint][convertTimeToX(v.Time.Time)].count += 1
-			pointsMap[endpoint][convertTimeToX(v.Time.Time)].time += v.ReqTime
+			pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)].count += 1
+			pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)].time += v.ReqTime
 			minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
 		}
 	}
@@ -159,7 +161,6 @@ func generateCountGraph(aggregates []string, nginxAccessLogFilepath string) (*pl
 
 	for i, aggregate := range aggregates {
 		rg[i] = regexp.MustCompile(aggregate)
-		pointsMap[aggregate] = make(map[float64]float64)
 	}
 
 	minTime := math.MaxFloat64
@@ -173,7 +174,10 @@ func generateCountGraph(aggregates []string, nginxAccessLogFilepath string) (*pl
 
 		for _, r := range rg {
 			if r.MatchString(endpoint) {
-				pointsMap[r.String()][convertTimeToX(v.Time.Time)] += 1
+				if _, ok := pointsMap[makeKey(v.GetMethod(), r.String())]; !ok {
+					pointsMap[makeKey(v.GetMethod(), r.String())] = make(map[float64]float64)
+				}
+				pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)] += 1
 				minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
 				noMatch = false
 				break
@@ -181,10 +185,10 @@ func generateCountGraph(aggregates []string, nginxAccessLogFilepath string) (*pl
 		}
 		// どれにもマッチしなかったら
 		if noMatch {
-			if _, ok := pointsMap[endpoint]; !ok {
-				pointsMap[endpoint] = make(map[float64]float64)
+			if _, ok := pointsMap[makeKey(v.GetMethod(), endpoint)]; !ok {
+				pointsMap[makeKey(v.GetMethod(), endpoint)] = make(map[float64]float64)
 			}
-			pointsMap[endpoint][convertTimeToX(v.Time.Time)] += 1
+			pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)] += 1
 			minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
 		}
 	}
@@ -279,4 +283,8 @@ func GenerateGraph(aggregates []string, nginxAccessLogFilepath string, option *O
 
 func convertTimeToX(t time.Time) float64 {
 	return float64(t.Hour()*3600 + t.Minute()*60 + t.Second())
+}
+
+func makeKey(httpMethod, endpoint string) string {
+	return fmt.Sprintf("%s %s", httpMethod, endpoint)
 }

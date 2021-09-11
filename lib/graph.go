@@ -70,8 +70,8 @@ func GenerateGraph(aggregates []string, nginxAccessLogFilepath string) error {
 		points := make(plotter.XYs, len(v))
 		i := 0
 		for x, y := range v {
-			points[i].X = x
-			points[i].Y = y - minTime
+			points[i].X = x - minTime
+			points[i].Y = y 
 			i++
 		}
 		// sort points by x

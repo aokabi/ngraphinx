@@ -3,6 +3,7 @@ package lib
 import (
 	"bufio"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -37,8 +38,15 @@ type log struct {
 	VHost   string
 }
 
-func (l *log) GetEndPoint() string {
-	return strings.Split(l.Req, " ")[1]
+func (l *log) GetEndPoint() (string, error) {
+	req := strings.Split(l.Req, " ")[1]
+
+	// alpに習ってクエリパラメータは除去
+	u, err := url.Parse(req)
+	if err != nil {
+		return "", err
+	}
+	return u.Path, nil
 }
 
 func GetNginxAccessLog(filepath string) ([]log, error) {

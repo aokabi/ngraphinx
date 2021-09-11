@@ -28,7 +28,7 @@ func GenerateGraph(aggregates []string, nginxAccessLogFilepath string) error {
 	// 表示項目の設定
 	p.Title.Text = "access.log"
 	p.X.Label.Text = "time"
-	p.Y.Label.Text = "request count"
+	p.Y.Label.Text = "request count / sec"
 
 	logs, err := GetNginxAccessLog(nginxAccessLogFilepath)
 	if err != nil {
@@ -46,8 +46,13 @@ func GenerateGraph(aggregates []string, nginxAccessLogFilepath string) error {
 
 	for _, v := range logs {
 		noMatch := true
+		endpoint, err := v.GetEndPoint()
+		if err != nil {
+			return err
+		}
+
 		for _, r := range rg {
-			if r.MatchString(v.GetEndPoint()) {
+			if r.MatchString(endpoint) {
 				pointsMap[r.String()][convertTimeToX(v.Time.Time)] += 1
 				minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
 				noMatch = false
@@ -56,10 +61,10 @@ func GenerateGraph(aggregates []string, nginxAccessLogFilepath string) error {
 		}
 		// どれにもマッチしなかったら
 		if noMatch {
-			if _, ok := pointsMap[v.GetEndPoint()]; !ok {
-				pointsMap[v.GetEndPoint()] = make(map[float64]float64)
+			if _, ok := pointsMap[endpoint]; !ok {
+				pointsMap[endpoint] = make(map[float64]float64)
 			}
-			pointsMap[v.GetEndPoint()][convertTimeToX(v.Time.Time)] += 1
+			pointsMap[endpoint][convertTimeToX(v.Time.Time)] += 1
 			minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
 		}
 	}
@@ -71,7 +76,7 @@ func GenerateGraph(aggregates []string, nginxAccessLogFilepath string) error {
 		i := 0
 		for x, y := range v {
 			points[i].X = x - minTime
-			points[i].Y = y 
+			points[i].Y = y
 			i++
 		}
 		// sort points by x

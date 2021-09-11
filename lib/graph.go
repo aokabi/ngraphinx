@@ -3,18 +3,35 @@ package lib
 import (
 	"fmt"
 	"math"
+	"os"
 	"regexp"
 	"sort"
 	"time"
 
 	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/font"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/vg/draw"
+	"gonum.org/v1/plot/vg/vgimg"
 )
 
-func GenerateGraph(aggregates []string, nginxAccessLogFilepath string) error {
-	// インスタンスを生成
+type Inch = int
+
+type Option struct {
+	imageWidth font.Length
+	imageHeight font.Length
+}
+
+func NewOption(w, h Inch) *Option {
+	return &Option{
+		imageWidth: font.Length(w),
+		imageHeight: font.Length(h),
+	}
+}
+
+func generateCountGraph(aggregates []string, nginxAccessLogFilepath string) (*plot.Plot, error) {
 	p := plot.New()
 
 	type xyAxis struct {
@@ -32,7 +49,7 @@ func GenerateGraph(aggregates []string, nginxAccessLogFilepath string) error {
 
 	logs, err := GetNginxAccessLog(nginxAccessLogFilepath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	rg := make([]*regexp.Regexp, len(aggregates))
@@ -48,7 +65,7 @@ func GenerateGraph(aggregates []string, nginxAccessLogFilepath string) error {
 		noMatch := true
 		endpoint, err := v.GetEndPoint()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		for _, r := range rg {
@@ -87,18 +104,64 @@ func GenerateGraph(aggregates []string, nginxAccessLogFilepath string) error {
 	}
 	// plotter.XYs型に変換してplot.Addを呼び出す
 	if err := plotutil.AddLinePoints(p, pointsList...); err != nil {
-		return err
+		return nil, err
 	}
 
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
+	
 
-	// 描画結果を保存
-	// "5*vg.Inch" の数値を変更すれば，保存する画像のサイズを調整できます．
-	if err := p.Save(5*vg.Inch, 5*vg.Inch, fmt.Sprintf("%s.png", time.Now().Format(time.RFC3339))); err != nil {
+	return p, nil
+}
+
+func GenerateGraph(aggregates []string, nginxAccessLogFilepath string, option *Option) error {
+	// インスタンスを生成
+	const rows, cols = 2, 1
+	plots := make([][]*plot.Plot, rows)
+	for j := 0; j < rows; j++ {
+		plots[j] = make([]*plot.Plot, cols)
+		for i := 0; i < cols; i++ {
+			p, err := generateCountGraph(aggregates, nginxAccessLogFilepath)
+			if err != nil {
+				return err
+			}
+			plots[j][i] = p
+		}
+	}
+	// 描画
+	img := vgimg.New(option.imageWidth*vg.Inch, option.imageHeight*vg.Inch)
+	dc := draw.New(img)
+	t := draw.Tiles{
+		Rows:      rows,
+		Cols:      cols,
+		PadX:      vg.Millimeter,
+		PadY:      vg.Millimeter,
+		PadTop:    vg.Points(2),
+		PadBottom: vg.Points(2),
+		PadLeft:   vg.Points(2),
+		PadRight:  vg.Points(2),
+	}
+
+	canvases := plot.Align(plots, t, dc)
+	for j := 0; j < rows; j++ {
+		for i := 0; i < cols; i++ {
+			if plots[j][i] != nil {
+				plots[j][i].Draw(canvases[j][i])
+			}
+		}
+	}
+
+	w, err := os.Create(fmt.Sprintf("%s.png", time.Now().Format(time.RFC3339)))
+	if err != nil {
 		return err
 	}
+	defer w.Close()
+	png := vgimg.PngCanvas{Canvas: img}
+	if _, err := png.WriteTo(w); err != nil {
+		return err
+	}
+
 	return nil
 }
 

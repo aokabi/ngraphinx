@@ -15,12 +15,15 @@ var (
 	rootCmd = &cobra.Command{
 		RunE: func(cmd *cobra.Command, args []string) error {
 			regStrs := strings.Split(aggregates, ",")
-			return lib.GenerateGraph(regStrs, nginxAccessLogFilepath)
+			option := lib.NewOption(imageWidth, imageHeight)
+			return lib.GenerateGraph(regStrs, nginxAccessLogFilepath, option)
 		},
 	}
 
 	nginxAccessLogFilepath string
 	aggregates             string
+	imageWidth             lib.Inch
+	imageHeight            lib.Inch
 )
 
 func Execute() error {
@@ -33,5 +36,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&userLicense, "license", "l", "", "name of license for the project")
 	rootCmd.PersistentFlags().StringVar(&aggregates, "aggregates", "", "aggregate endpoint")
 	rootCmd.PersistentFlags().StringVar(&nginxAccessLogFilepath, "path", "access.log", "nginx access log path")
+	rootCmd.PersistentFlags().IntVar(&imageWidth, "width", 10, "image width(Inch)")
+	rootCmd.PersistentFlags().IntVar(&imageHeight, "height", 10, "image height(Inch)")
 	viper.SetDefault("license", "apache")
 }

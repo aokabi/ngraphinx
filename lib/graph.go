@@ -1,17 +1,20 @@
 package lib
 
 import (
+	"crypto/md5"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"regexp"
 	"sort"
 	"time"
 
+	"gonum.org/v1/plot/plotutil"
+
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/font"
 	"gonum.org/v1/plot/plotter"
-	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
 	"gonum.org/v1/plot/vg/draw"
 	"gonum.org/v1/plot/vg/vgimg"
@@ -29,6 +32,19 @@ func NewOption(w, h Inch) *Option {
 		imageWidth:  font.Length(w),
 		imageHeight: font.Length(h),
 	}
+}
+
+func ApplyPattern(key string, line *plotter.Line, point *plotter.Scatter) {
+	md5 := md5.Sum([]byte(key))
+	n := 0
+	for i, c := range md5 {
+		rand.Seed(int64(c)*int64(len(md5)) + int64(i))
+		n = n + rand.Intn(65536)
+	}
+	line.Color = plotutil.Color(n)
+	line.Dashes = plotutil.Dashes(n)
+	point.Color = plotutil.Color(n)
+	point.Shape = plotutil.Shape(n)
 }
 
 func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath string) (*plot.Plot, error) {
@@ -136,15 +152,15 @@ func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath str
 	sort.Slice(nameAndPoints, func(i, j int) bool {
 		return nameAndPoints[i].countSum > nameAndPoints[j].countSum
 	})
-	pointsList := make([]interface{}, 0)
 	for _, v := range nameAndPoints {
-		pointsList = append(pointsList, v.name, v.points)
+		lpLine, lpPoints, err := plotter.NewLinePoints(v.points)
+		if err != nil {
+			panic(err)
+		}
+		ApplyPattern(v.name, lpLine, lpPoints)
+		p.Add(lpLine, lpPoints)
+		p.Legend.Add(v.name, lpLine, lpPoints)
 	}
-	// plotter.XYs型に変換してplot.Addを呼び出す
-	if err := plotutil.AddLinePoints(p, pointsList...); err != nil {
-		return nil, err
-	}
-
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
@@ -238,13 +254,14 @@ func generateCountGraph(aggregates []string, nginxAccessLogFilepath string) (*pl
 	sort.Slice(nameAndPoints, func(i, j int) bool {
 		return nameAndPoints[i].countSum > nameAndPoints[j].countSum
 	})
-	pointsList := make([]interface{}, 0)
 	for _, v := range nameAndPoints {
-		pointsList = append(pointsList, v.name, v.points)
-	}
-	// plotter.XYs型に変換してplot.Addを呼び出す
-	if err := plotutil.AddLinePoints(p, pointsList...); err != nil {
-		return nil, err
+		lpLine, lpPoints, err := plotter.NewLinePoints(v.points)
+		if err != nil {
+			panic(err)
+		}
+		ApplyPattern(v.name, lpLine, lpPoints)
+		p.Add(lpLine, lpPoints)
+		p.Legend.Add(v.name, lpLine, lpPoints)
 	}
 
 	// legendは左上にする

@@ -20,15 +20,118 @@ import (
 type Inch = int
 
 type Option struct {
-	imageWidth font.Length
+	imageWidth  font.Length
 	imageHeight font.Length
 }
 
 func NewOption(w, h Inch) *Option {
 	return &Option{
-		imageWidth: font.Length(w),
+		imageWidth:  font.Length(w),
 		imageHeight: font.Length(h),
 	}
+}
+
+func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath string) (*plot.Plot, error) {
+	p := plot.New()
+
+	type xyAxis struct {
+		x float64
+		y float64
+	}
+
+	type summary struct {
+		count int
+		time  float64
+	}
+
+	// 単位時間ごとのリクエスト数を数えるのが大変なので一旦マップにする
+	pointsMap := make(map[string]map[float64]*summary)
+
+	// 表示項目の設定
+	p.Title.Text = "access.log"
+	p.X.Label.Text = "time"
+	p.Y.Label.Text = "request time average"
+
+	logs, err := GetNginxAccessLog(nginxAccessLogFilepath)
+	if err != nil {
+		return nil, err
+	}
+
+	rg := make([]*regexp.Regexp, len(aggregates))
+
+	for i, aggregate := range aggregates {
+		rg[i] = regexp.MustCompile(aggregate)
+		pointsMap[aggregate] = make(map[float64]*summary)
+	}
+
+	minTime := math.MaxFloat64
+
+	for _, v := range logs {
+		noMatch := true
+		endpoint, err := v.GetEndPoint()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, r := range rg {
+			if r.MatchString(endpoint) {
+				if _, ok := pointsMap[r.String()][convertTimeToX(v.Time.Time)]; !ok {
+					pointsMap[r.String()][convertTimeToX(v.Time.Time)] = &summary{
+						count: 0,
+						time:  0,
+					}
+				}
+				pointsMap[r.String()][convertTimeToX(v.Time.Time)].count += 1
+				pointsMap[r.String()][convertTimeToX(v.Time.Time)].time += v.ReqTime
+				minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
+				noMatch = false
+				break
+			}
+		}
+		// どれにもマッチしなかったら
+		if noMatch {
+			if _, ok := pointsMap[endpoint]; !ok {
+				pointsMap[endpoint] = make(map[float64]*summary)
+			}
+			if _, ok := pointsMap[endpoint][convertTimeToX(v.Time.Time)]; !ok {
+				pointsMap[endpoint][convertTimeToX(v.Time.Time)] = &summary{
+					count: 0,
+					time:  0,
+				}
+			}
+			pointsMap[endpoint][convertTimeToX(v.Time.Time)].count += 1
+			pointsMap[endpoint][convertTimeToX(v.Time.Time)].time += v.ReqTime
+			minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
+		}
+	}
+
+	pointsList := make([]interface{}, 0)
+	// plotするにはplotter.XYs型に変換する必要がある
+	for k, v := range pointsMap {
+		points := make(plotter.XYs, len(v))
+		i := 0
+		for x, y := range v {
+			points[i].X = x - minTime
+			points[i].Y = float64(y.time) / float64(y.count)
+			i++
+		}
+		// sort points by x
+		sort.Slice(points, func(i, j int) bool {
+			return points[i].X < points[j].X
+		})
+		pointsList = append(pointsList, k, points)
+	}
+	// plotter.XYs型に変換してplot.Addを呼び出す
+	if err := plotutil.AddLinePoints(p, pointsList...); err != nil {
+		return nil, err
+	}
+
+	// legendは左上にする
+	p.Legend.Left = true
+	p.Legend.Top = true
+
+	return p, nil
+
 }
 
 func generateCountGraph(aggregates []string, nginxAccessLogFilepath string) (*plot.Plot, error) {
@@ -110,21 +213,30 @@ func generateCountGraph(aggregates []string, nginxAccessLogFilepath string) (*pl
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
-	
 
 	return p, nil
 }
 
 func GenerateGraph(aggregates []string, nginxAccessLogFilepath string, option *Option) error {
 	// インスタンスを生成
+	// 縦に２つ並べる
 	const rows, cols = 2, 1
 	plots := make([][]*plot.Plot, rows)
 	for j := 0; j < rows; j++ {
 		plots[j] = make([]*plot.Plot, cols)
 		for i := 0; i < cols; i++ {
-			p, err := generateCountGraph(aggregates, nginxAccessLogFilepath)
-			if err != nil {
-				return err
+			var p *plot.Plot
+			var err error
+			if j == 0 {
+				p, err = generateCountGraph(aggregates, nginxAccessLogFilepath)
+				if err != nil {
+					return err
+				}
+			} else {
+				p, err = generateReqTimeAverageGraph(aggregates, nginxAccessLogFilepath)
+				if err != nil {
+					return err
+				}
 			}
 			plots[j][i] = p
 		}

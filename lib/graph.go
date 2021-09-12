@@ -25,12 +25,14 @@ type Inch = int
 type Option struct {
 	imageWidth  font.Length
 	imageHeight font.Length
+	minCount    int
 }
 
-func NewOption(w, h Inch) *Option {
+func NewOption(w, h Inch, minCount int) *Option {
 	return &Option{
 		imageWidth:  font.Length(w),
 		imageHeight: font.Length(h),
+		minCount:    minCount,
 	}
 }
 
@@ -47,32 +49,16 @@ func ApplyPattern(key string, line *plotter.Line, point *plotter.Scatter) {
 	point.Shape = plotutil.Shape(n)
 }
 
-func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath string) (*plot.Plot, error) {
-	p := plot.New()
+type PerSec struct {
+	count int
+	y     float64
+}
 
-	type xyAxis struct {
-		x float64
-		y float64
-	}
-
-	type summary struct {
-		count int
-		time  float64
-	}
-
+func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath string, option *Option,
+	mapLogToPerSec func(v log) float64, mapPerSecToY func(ps PerSec) float64) {
 	// 単位時間ごとのリクエスト数を数えるのが大変なので一旦マップにする
-	pointsMap := make(map[string]map[float64]*summary)
-
-	// 表示項目の設定
-	p.Title.Text = "access.log"
-	p.X.Label.Text = "time"
-	p.Y.Label.Text = "request time sum / sec"
-
-	logs, err := GetNginxAccessLog(nginxAccessLogFilepath)
-	if err != nil {
-		return nil, err
-	}
-
+	pointsMap := make(map[string]map[float64]*PerSec)
+	logs, _ := GetNginxAccessLog(nginxAccessLogFilepath)
 	rg := make([]*regexp.Regexp, len(aggregates))
 
 	for i, aggregate := range aggregates {
@@ -83,24 +69,20 @@ func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath str
 
 	for _, v := range logs {
 		noMatch := true
-		endpoint, err := v.GetEndPoint()
-		if err != nil {
-			return nil, err
-		}
-
+		endpoint, _ := v.GetEndPoint()
 		for _, r := range rg {
 			if r.MatchString(endpoint) {
 				if _, ok := pointsMap[makeKey(v.GetMethod(), r.String())]; !ok {
-					pointsMap[makeKey(v.GetMethod(), r.String())] = make(map[float64]*summary)
+					pointsMap[makeKey(v.GetMethod(), r.String())] = make(map[float64]*PerSec)
 				}
 				if _, ok := pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)]; !ok {
-					pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)] = &summary{
+					pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)] = &PerSec{
 						count: 0,
-						time:  0,
+						y:     0,
 					}
 				}
 				pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)].count += 1
-				pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)].time += v.ReqTime
+				pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)].y += mapLogToPerSec(v)
 				minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
 				noMatch = false
 				break
@@ -109,17 +91,23 @@ func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath str
 		// どれにもマッチしなかったら
 		if noMatch {
 			if _, ok := pointsMap[makeKey(v.GetMethod(), endpoint)]; !ok {
-				pointsMap[makeKey(v.GetMethod(), endpoint)] = make(map[float64]*summary)
+				pointsMap[makeKey(v.GetMethod(), endpoint)] = make(map[float64]*PerSec)
 			}
 			if _, ok := pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)]; !ok {
-				pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)] = &summary{
+				pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)] = &PerSec{
 					count: 0,
-					time:  0,
+					y:     0,
 				}
 			}
 			pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)].count += 1
-			pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)].time += v.ReqTime
+			pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)].y += v.ReqTime
 			minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
+		}
+	}
+	pointCountSumMap := map[float64]int{}
+	for _, v := range pointsMap {
+		for x, y := range v {
+			pointCountSumMap[x] += y.count
 		}
 	}
 
@@ -137,9 +125,11 @@ func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath str
 		i := 0
 		countSum := 0.0
 		for x, y := range v {
+			if pointCountSumMap[x] < option.minCount {
+				continue
+			}
 			points[i].X = x - minTime
-			points[i].Y = float64(y.time) // / float64(y.count)
-			// points[i].Y = float64(y.time) / float64(y.count) // if average
+			points[i].Y = mapPerSecToY(*y)
 			countSum += points[i].Y
 			i++
 		}
@@ -161,113 +151,40 @@ func generateReqTimeAverageGraph(aggregates []string, nginxAccessLogFilepath str
 		p.Add(lpLine, lpPoints)
 		p.Legend.Add(v.name, lpLine, lpPoints)
 	}
+}
+
+func generateReqTimeSumGraph(aggregates []string, nginxAccessLogFilepath string, option *Option) (*plot.Plot, error) {
+	// 表示項目の設定
+	p := plot.New()
+	p.Title.Text = "access.log"
+	p.X.Label.Text = "time"
+	p.Y.Label.Text = "request time sum / sec"
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
-
+	generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v log) float64 {
+		return v.ReqTime
+	}, func(ps PerSec) float64 {
+		// return ps.y / ps.count // if average
+		return ps.y
+	})
 	return p, nil
-
 }
 
-func generateCountGraph(aggregates []string, nginxAccessLogFilepath string) (*plot.Plot, error) {
-	p := plot.New()
-
-	type xyAxis struct {
-		x float64
-		y float64
-	}
-
-	// 単位時間ごとのリクエスト数を数えるのが大変なので一旦マップにする
-	pointsMap := make(map[string]map[float64]float64)
-
+func generateCountGraph(aggregates []string, nginxAccessLogFilepath string, option *Option) (*plot.Plot, error) {
 	// 表示項目の設定
+	p := plot.New()
 	p.Title.Text = "access.log"
 	p.X.Label.Text = "time"
 	p.Y.Label.Text = "request count / sec"
-
-	logs, err := GetNginxAccessLog(nginxAccessLogFilepath)
-	if err != nil {
-		return nil, err
-	}
-
-	rg := make([]*regexp.Regexp, len(aggregates))
-
-	for i, aggregate := range aggregates {
-		rg[i] = regexp.MustCompile(aggregate)
-	}
-
-	minTime := math.MaxFloat64
-
-	for _, v := range logs {
-		noMatch := true
-		endpoint, err := v.GetEndPoint()
-		if err != nil {
-			return nil, err
-		}
-
-		for _, r := range rg {
-			if r.MatchString(endpoint) {
-				if _, ok := pointsMap[makeKey(v.GetMethod(), r.String())]; !ok {
-					pointsMap[makeKey(v.GetMethod(), r.String())] = make(map[float64]float64)
-				}
-				pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)] += 1
-				minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
-				noMatch = false
-				break
-			}
-		}
-		// どれにもマッチしなかったら
-		if noMatch {
-			if _, ok := pointsMap[makeKey(v.GetMethod(), endpoint)]; !ok {
-				pointsMap[makeKey(v.GetMethod(), endpoint)] = make(map[float64]float64)
-			}
-			pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)] += 1
-			minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
-		}
-	}
-
-	// Legend が挿入順に生成されるため、リクエスト数でソートする用途
-	type NameAndPoints struct {
-		name     string
-		points   plotter.XYs
-		countSum float64
-	}
-	nameAndPoints := []NameAndPoints{}
-	// plotするにはplotter.XYs型に変換する必要がある
-	for k, v := range pointsMap {
-		points := make(plotter.XYs, len(v))
-		i := 0
-		countSum := 0.0
-		for x, y := range v {
-			points[i].X = x - minTime
-			points[i].Y = y
-			i++
-			countSum += y
-		}
-
-		// sort points by x
-		sort.Slice(points, func(i, j int) bool {
-			return points[i].X < points[j].X
-		})
-		nameAndPoints = append(nameAndPoints, NameAndPoints{k, points, countSum})
-	}
-	sort.Slice(nameAndPoints, func(i, j int) bool {
-		return nameAndPoints[i].countSum > nameAndPoints[j].countSum
-	})
-	for _, v := range nameAndPoints {
-		lpLine, lpPoints, err := plotter.NewLinePoints(v.points)
-		if err != nil {
-			panic(err)
-		}
-		ApplyPattern(v.name, lpLine, lpPoints)
-		p.Add(lpLine, lpPoints)
-		p.Legend.Add(v.name, lpLine, lpPoints)
-	}
-
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
-
+	generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v log) float64 {
+		return 1.0
+	}, func(ps PerSec) float64 {
+		return ps.y
+	})
 	return p, nil
 }
 
@@ -282,12 +199,12 @@ func GenerateGraph(aggregates []string, nginxAccessLogFilepath string, option *O
 			var p *plot.Plot
 			var err error
 			if j == 0 {
-				p, err = generateReqTimeAverageGraph(aggregates, nginxAccessLogFilepath)
+				p, err = generateReqTimeSumGraph(aggregates, nginxAccessLogFilepath, option)
 				if err != nil {
 					return err
 				}
 			} else {
-				p, err = generateCountGraph(aggregates, nginxAccessLogFilepath)
+				p, err = generateCountGraph(aggregates, nginxAccessLogFilepath, option)
 				if err != nil {
 					return err
 				}

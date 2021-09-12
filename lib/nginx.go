@@ -2,6 +2,7 @@ package lib
 
 import (
 	"bufio"
+	"errors"
 	"net"
 	"net/url"
 	"os"
@@ -39,7 +40,11 @@ type log struct {
 }
 
 func (l *log) GetEndPoint() (string, error) {
-	req := strings.Split(l.Req, " ")[1]
+	reqs := strings.Split(l.Req, " ")
+	if len(reqs) <= 1 {
+		return "", errors.New("endpoint error")
+	}
+	req := reqs[1]
 
 	// alpに習ってクエリパラメータは除去
 	u, err := url.Parse(req)

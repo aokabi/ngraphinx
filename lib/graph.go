@@ -69,7 +69,10 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 
 	for _, v := range logs {
 		noMatch := true
-		endpoint, _ := v.GetEndPoint()
+		endpoint, err := v.GetEndPoint()
+		if err != nil {
+			continue
+		}
 		for _, r := range rg {
 			if r.MatchString(endpoint) {
 				if _, ok := pointsMap[makeKey(v.GetMethod(), r.String())]; !ok {
@@ -133,6 +136,7 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 			countSum += points[i].Y
 			i++
 		}
+		points = points[0:i]
 		// sort points by x
 		sort.Slice(points, func(i, j int) bool {
 			return points[i].X < points[j].X

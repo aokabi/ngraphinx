@@ -9,3 +9,6 @@ nginxのaccess.logを時系列のグラフにするcliツール
 
 ## usage
 `ngraphinx --path="./sample-accesslog/access.log" --aggregates="/isu/*,/api/condition/*,/?jwt"`
+
+## contribution
+welcome!

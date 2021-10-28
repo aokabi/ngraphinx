@@ -18,8 +18,8 @@ linters:
     - unparam
 
 severity:
-  default-severity: warning
+  default-severity: error
   rules:
     - linters:
       - unparam
-      severity: info
+      severity: warning

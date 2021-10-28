@@ -11,6 +11,11 @@ linters:
     - typecheck
     - unused
     - varcheck
-    - gosec
     - unparam
 
+severity:
+  default-severity: warning
+  rules:
+    - linters:
+      - unparam
+      severity: info

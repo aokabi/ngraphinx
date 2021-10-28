@@ -22,4 +22,4 @@ severity:
   rules:
     - linters:
       - unparam
-      severity: warning
+      severity: error

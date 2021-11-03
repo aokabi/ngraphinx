@@ -55,10 +55,13 @@ type PerSec struct {
 }
 
 func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath string, option *Option,
-	mapLogToPerSec func(v log) float64, mapPerSecToY func(ps PerSec) float64) {
+	mapLogToPerSec func(v log) float64, mapPerSecToY func(ps PerSec) float64) error {
 	// 単位時間ごとのリクエスト数を数えるのが大変なので一旦マップにする
 	pointsMap := make(map[string]map[float64]*PerSec)
-	logs, _ := GetNginxAccessLog(nginxAccessLogFilepath)
+	logs, err := GetNginxAccessLog(nginxAccessLogFilepath)
+	if err != nil {
+		return err
+	}
 	rg := make([]*regexp.Regexp, len(aggregates))
 
 	for i, aggregate := range aggregates {
@@ -149,12 +152,13 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 	for _, v := range nameAndPoints {
 		lpLine, lpPoints, err := plotter.NewLinePoints(v.points)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		ApplyPattern(v.name, lpLine, lpPoints)
 		p.Add(lpLine, lpPoints)
 		p.Legend.Add(v.name, lpLine, lpPoints)
 	}
+	return nil
 }
 
 func generateReqTimeSumGraph(aggregates []string, nginxAccessLogFilepath string, option *Option) (*plot.Plot, error) {
@@ -166,12 +170,15 @@ func generateReqTimeSumGraph(aggregates []string, nginxAccessLogFilepath string,
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
-	generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v log) float64 {
+	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v log) float64 {
 		return v.ReqTime
 	}, func(ps PerSec) float64 {
 		// return ps.y / ps.count // if average
 		return ps.y
 	})
+	if err != nil {
+		return nil, err
+	}
 	return p, nil
 }
 
@@ -184,11 +191,14 @@ func generateCountGraph(aggregates []string, nginxAccessLogFilepath string, opti
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
-	generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v log) float64 {
+	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v log) float64 {
 		return 1.0
 	}, func(ps PerSec) float64 {
 		return ps.y
 	})
+	if err != nil {
+		return nil, err
+	}
 	return p, nil
 }
 

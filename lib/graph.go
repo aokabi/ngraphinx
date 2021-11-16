@@ -116,14 +116,15 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 				if _, ok := pointsMap[key]; !ok {
 					pointsMap[key] = make(map[float64]*PerSec)
 				}
-				if _, ok := pointsMap[key][convertTimeToX(v.Time.Time)]; !ok {
-					pointsMap[key][convertTimeToX(v.Time.Time)] = &PerSec{
+				logTime := convertTimeToX(v.Time.Time)
+				if _, ok := pointsMap[key][logTime]; !ok {
+					pointsMap[key][logTime] = &PerSec{
 						count: 0,
 						y:     0,
 					}
 				}
-				pointsMap[key][convertTimeToX(v.Time.Time)].count += 1
-				pointsMap[key][convertTimeToX(v.Time.Time)].y += mapLogToPerSec(v)
+				pointsMap[key][logTime].count += 1
+				pointsMap[key][logTime].y += mapLogToPerSec(v)
 				minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
 				noMatch = false
 				break

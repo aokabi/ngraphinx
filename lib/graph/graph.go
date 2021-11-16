@@ -164,12 +164,12 @@ func generateReqTimeSumGraph(aggregates lib.Regexps, nginxAccessLogFilepath stri
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
-	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v nginx.Log) float64 {
-		return v.ReqTime
-	}, func(ps PerSec) float64 {
-		// return ps.y / ps.count // if average
-		return ps.y
-	})
+	getYValue := func(v nginx.Log) float64 { return v.ReqTime }
+	calc := func(ps PerSec) float64 { 
+		// return ps.y / ps.count // if average 
+		return ps.y 
+	}
+	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, getYValue, calc)
 	if err != nil {
 		return nil, err
 	}
@@ -186,11 +186,9 @@ func generateCountGraph(aggregates lib.Regexps, nginxAccessLogFilepath string, o
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
-	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v nginx.Log) float64 {
-		return 1.0
-	}, func(ps PerSec) float64 {
-		return ps.y
-	})
+	getYValue := func(v nginx.Log) float64 { return 1.0}
+	calc := func(ps PerSec) float64 { return ps.y }
+	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, getYValue, calc)
 	if err != nil {
 		return nil, err
 	}

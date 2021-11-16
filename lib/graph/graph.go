@@ -6,10 +6,10 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"regexp"
 	"sort"
 	"time"
 
+	"github.com/aokabi/ngraphinx/lib"
 	"github.com/aokabi/ngraphinx/lib/nginx"
 	"gonum.org/v1/plot/plotutil"
 
@@ -61,17 +61,6 @@ type namedPoints struct {
 	countSum float64
 }
 
-type regexps []*regexp.Regexp
-
-func (rs regexps) findMatchStringFirst(s string) (retr *regexp.Regexp, find bool) {
-	for _, r := range rs {
-		if r.MatchString(s) {
-			return r, true
-		}
-	}
-	return nil, false
-}
-
 type pointsMap = map[string]map[float64]*PerSec
 
 // x: float64, y: PerSec を plotter.XYsに詰め直す
@@ -100,16 +89,11 @@ func convPointsMap2NamedPointsSlice(pointsMap pointsMap, pointCountSumMap map[fl
 	return namedPointsArray
 }
 
-func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath string, option *Option,
+func generateGraphImpl(p *plot.Plot, regexps lib.Regexps, nginxAccessLogFilepath string, option *Option,
 	mapLogToPerSec func(v nginx.Log) float64, mapPerSecToY func(ps PerSec) float64) error {
 	logs, err := nginx.GetNginxAccessLog(nginxAccessLogFilepath)
 	if err != nil {
 		return err
-	}
-	regexps := make(regexps, len(aggregates))
-
-	for i, aggregate := range aggregates {
-		regexps[i] = regexp.MustCompile(aggregate)
 	}
 
 	minTime := math.MaxFloat64
@@ -121,7 +105,7 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 		if err != nil {
 			continue
 		}
-		r, find := regexps.findMatchStringFirst(endpoint)
+		r, find := regexps.FindMatchStringFirst(endpoint)
 		var key string
 		if find {
 			key = makeKey(v.GetMethod(), r.String())
@@ -171,7 +155,7 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 }
 
 // generate graph of request time sum per second
-func generateReqTimeSumGraph(aggregates []string, nginxAccessLogFilepath string, option *Option) (*plot.Plot, error) {
+func generateReqTimeSumGraph(aggregates lib.Regexps, nginxAccessLogFilepath string, option *Option) (*plot.Plot, error) {
 	// 表示項目の設定
 	p := plot.New()
 	p.Title.Text = "access.log"
@@ -193,7 +177,7 @@ func generateReqTimeSumGraph(aggregates []string, nginxAccessLogFilepath string,
 }
 
 // generate graph of request num per second
-func generateCountGraph(aggregates []string, nginxAccessLogFilepath string, option *Option) (*plot.Plot, error) {
+func generateCountGraph(aggregates lib.Regexps, nginxAccessLogFilepath string, option *Option) (*plot.Plot, error) {
 	// 表示項目の設定
 	p := plot.New()
 	p.Title.Text = "access.log"
@@ -213,7 +197,7 @@ func generateCountGraph(aggregates []string, nginxAccessLogFilepath string, opti
 	return p, nil
 }
 
-func GenerateGraph(aggregates []string, nginxAccessLogFilepath string, option *Option) error {
+func GenerateGraph(aggregates lib.Regexps, nginxAccessLogFilepath string, option *Option) error {
 	// インスタンスを生成
 	// 縦に２つ並べる
 	const rows, cols = 2, 1

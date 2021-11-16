@@ -54,6 +54,40 @@ type PerSec struct {
 	y     float64
 }
 
+type namedPoints struct {
+		name     string
+		points   plotter.XYs
+		countSum float64
+}
+
+type pointsMap = map[string]map[float64]*PerSec
+
+// x: float64, y: PerSec を plotter.XYsに詰め直す
+func convPointsMap2NamedPointsSlice(pointsMap pointsMap, pointCountSumMap map[float64]int, option *Option, minTime float64, mapPerSecToY func(PerSec) float64) []namedPoints {
+	namedPointsArray := make([]namedPoints, 0)
+	for k, v := range pointsMap {
+		points := make(plotter.XYs, len(v))
+		i := 0
+		countSum := 0.0
+		for x, y := range v {
+			if pointCountSumMap[x] < option.minCount {
+				continue
+			}
+			points[i].X = x - minTime
+			points[i].Y = mapPerSecToY(*y)
+			countSum += points[i].Y
+			i++
+		}
+		points = points[0:i]
+		// sort points by x
+		sort.Slice(points, func(i, j int) bool {
+			return points[i].X < points[j].X
+		})
+		namedPointsArray= append(namedPointsArray, namedPoints{k, points, countSum})
+	}
+	return namedPointsArray
+}
+
 func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath string, option *Option,
 	mapLogToPerSec func(v log) float64, mapPerSecToY func(ps PerSec) float64) error {
 	// 単位時間ごとのリクエスト数を数えるのが大変なので一旦マップにする
@@ -110,42 +144,17 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 			minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
 		}
 	}
-	pointCountSumMap := map[float64]int{}
+	pointCountSumMap := make(map[float64]int)
 	for _, v := range pointsMap {
 		for x, y := range v {
 			pointCountSumMap[x] += y.count
 		}
 	}
 
-	// Legend が挿入順に生成されるため、時間総和数でソートする用途
-	type NameAndPoints struct {
-		name     string
-		points   plotter.XYs
-		countSum float64
-	}
-	nameAndPoints := []NameAndPoints{}
-
 	// plotするにはplotter.XYs型に変換する必要がある
-	for k, v := range pointsMap {
-		points := make(plotter.XYs, len(v))
-		i := 0
-		countSum := 0.0
-		for x, y := range v {
-			if pointCountSumMap[x] < option.minCount {
-				continue
-			}
-			points[i].X = x - minTime
-			points[i].Y = mapPerSecToY(*y)
-			countSum += points[i].Y
-			i++
-		}
-		points = points[0:i]
-		// sort points by x
-		sort.Slice(points, func(i, j int) bool {
-			return points[i].X < points[j].X
-		})
-		nameAndPoints = append(nameAndPoints, NameAndPoints{k, points, countSum})
-	}
+	nameAndPoints := convPointsMap2NamedPointsSlice(pointsMap, pointCountSumMap, option, minTime, mapPerSecToY)
+
+	// Legend が挿入順に生成されるため、時間総和数でソートする用途
 	sort.Slice(nameAndPoints, func(i, j int) bool {
 		return nameAndPoints[i].countSum > nameAndPoints[j].countSum
 	})

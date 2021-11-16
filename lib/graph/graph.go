@@ -37,17 +37,14 @@ func NewOption(w, h Inch, minCount int) *Option {
 	}
 }
 
-func ApplyPattern(key string, line *plotter.Line, point *plotter.Scatter) {
+func randColorIdx(key string) int {
 	md5 := md5.Sum([]byte(key))
 	n := 0
 	for i, c := range md5 {
 		rand.Seed(int64(c)*int64(len(md5)) + int64(i))
 		n = n + rand.Intn(65536)
 	}
-	line.Color = plotutil.Color(n)
-	line.Dashes = plotutil.Dashes(n)
-	point.Color = plotutil.Color(n)
-	point.Shape = plotutil.Shape(n)
+	return n
 }
 
 type PerSec struct {
@@ -147,7 +144,12 @@ func generateGraphImpl(p *plot.Plot, regexps lib.Regexps, nginxAccessLogFilepath
 		if err != nil {
 			return err
 		}
-		ApplyPattern(v.name, lpLine, lpPoints)
+		idx := randColorIdx(v.name)
+		lpLine.Color = plotutil.Color(idx)
+		lpLine.Dashes = plotutil.Dashes(idx)
+		lpPoints.Color = plotutil.Color(idx)
+		lpPoints.Shape = plotutil.Shape(idx)
+
 		p.Add(lpLine, lpPoints)
 		p.Legend.Add(v.name, lpLine, lpPoints)
 	}
@@ -165,9 +167,9 @@ func generateReqTimeSumGraph(aggregates lib.Regexps, nginxAccessLogFilepath stri
 	p.Legend.Left = true
 	p.Legend.Top = true
 	getYValue := func(v nginx.Log) float64 { return v.ReqTime }
-	calc := func(ps PerSec) float64 { 
-		// return ps.y / ps.count // if average 
-		return ps.y 
+	calc := func(ps PerSec) float64 {
+		// return ps.y / ps.count // if average
+		return ps.y
 	}
 	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, getYValue, calc)
 	if err != nil {
@@ -186,7 +188,7 @@ func generateCountGraph(aggregates lib.Regexps, nginxAccessLogFilepath string, o
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
-	getYValue := func(v nginx.Log) float64 { return 1.0}
+	getYValue := func(v nginx.Log) float64 { return 1.0 }
 	calc := func(ps PerSec) float64 { return ps.y }
 	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, getYValue, calc)
 	if err != nil {

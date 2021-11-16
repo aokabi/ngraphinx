@@ -150,7 +150,7 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 				}
 			}
 			pointsMap[key][logTime].count += 1
-			pointsMap[key][logTime].y += v.ReqTime
+			pointsMap[key][logTime].y += mapLogToPerSec(v)
 			minTime = math.Min(minTime, logTime)
 		}
 	}

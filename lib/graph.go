@@ -55,9 +55,20 @@ type PerSec struct {
 }
 
 type namedPoints struct {
-		name     string
-		points   plotter.XYs
-		countSum float64
+	name     string
+	points   plotter.XYs
+	countSum float64
+}
+
+type regexps []*regexp.Regexp
+
+func (rs regexps) findMatchStringFirst(s string) (retr *regexp.Regexp, find bool) {
+	for _, r := range rs {
+		if r.MatchString(s) {
+			return r, true
+		}
+	}
+	return nil, false
 }
 
 type pointsMap = map[string]map[float64]*PerSec
@@ -83,7 +94,7 @@ func convPointsMap2NamedPointsSlice(pointsMap pointsMap, pointCountSumMap map[fl
 		sort.Slice(points, func(i, j int) bool {
 			return points[i].X < points[j].X
 		})
-		namedPointsArray= append(namedPointsArray, namedPoints{k, points, countSum})
+		namedPointsArray = append(namedPointsArray, namedPoints{k, points, countSum})
 	}
 	return namedPointsArray
 }
@@ -94,7 +105,7 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 	if err != nil {
 		return err
 	}
-	regexps := make([]*regexp.Regexp, len(aggregates))
+	regexps := make(regexps, len(aggregates))
 
 	for i, aggregate := range aggregates {
 		regexps[i] = regexp.MustCompile(aggregate)
@@ -105,45 +116,42 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 	// 単位時間ごとのリクエスト数を数えるのが大変なので一旦マップにする
 	pointsMap := make(map[string]map[float64]*PerSec)
 	for _, v := range logs {
-		noMatch := true
 		endpoint, err := v.GetEndPoint()
 		if err != nil {
 			continue
 		}
-		for _, r := range regexps {
-			if r.MatchString(endpoint) {
-				key := makeKey(v.GetMethod(),r.String())
-				if _, ok := pointsMap[key]; !ok {
-					pointsMap[key] = make(map[float64]*PerSec)
-				}
-				logTime := convertTimeToX(v.Time.Time)
-				if _, ok := pointsMap[key][logTime]; !ok {
-					pointsMap[key][logTime] = &PerSec{
-						count: 0,
-						y:     0,
-					}
-				}
-				pointsMap[key][logTime].count += 1
-				pointsMap[key][logTime].y += mapLogToPerSec(v)
-				minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
-				noMatch = false
-				break
-			}
-		}
+		r, find := regexps.findMatchStringFirst(endpoint)
 		// どれにもマッチしなかったら
-		if noMatch {
-			if _, ok := pointsMap[makeKey(v.GetMethod(), endpoint)]; !ok {
-				pointsMap[makeKey(v.GetMethod(), endpoint)] = make(map[float64]*PerSec)
+		if find {
+			key := makeKey(v.GetMethod(), r.String())
+			if _, ok := pointsMap[key]; !ok {
+				pointsMap[key] = make(map[float64]*PerSec)
 			}
-			if _, ok := pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)]; !ok {
-				pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)] = &PerSec{
+			logTime := convertTimeToX(v.Time.Time)
+			if _, ok := pointsMap[key][logTime]; !ok {
+				pointsMap[key][logTime] = &PerSec{
 					count: 0,
 					y:     0,
 				}
 			}
-			pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)].count += 1
-			pointsMap[makeKey(v.GetMethod(), endpoint)][convertTimeToX(v.Time.Time)].y += v.ReqTime
+			pointsMap[key][logTime].count += 1
+			pointsMap[key][logTime].y += mapLogToPerSec(v)
 			minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
+		} else {
+			key := makeKey(v.GetMethod(), endpoint)
+			if _, ok := pointsMap[key]; !ok {
+				pointsMap[key] = make(map[float64]*PerSec)
+			}
+			logTime := convertTimeToX(v.Time.Time)
+			if _, ok := pointsMap[key][logTime]; !ok {
+				pointsMap[key][logTime] = &PerSec{
+					count: 0,
+					y:     0,
+				}
+			}
+			pointsMap[key][logTime].count += 1
+			pointsMap[key][logTime].y += v.ReqTime
+			minTime = math.Min(minTime, logTime)
 		}
 	}
 	pointCountSumMap := make(map[float64]int)

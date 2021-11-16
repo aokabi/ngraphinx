@@ -112,17 +112,18 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 		}
 		for _, r := range regexps {
 			if r.MatchString(endpoint) {
-				if _, ok := pointsMap[makeKey(v.GetMethod(), r.String())]; !ok {
-					pointsMap[makeKey(v.GetMethod(), r.String())] = make(map[float64]*PerSec)
+				key := makeKey(v.GetMethod(),r.String())
+				if _, ok := pointsMap[key]; !ok {
+					pointsMap[key] = make(map[float64]*PerSec)
 				}
-				if _, ok := pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)]; !ok {
-					pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)] = &PerSec{
+				if _, ok := pointsMap[key][convertTimeToX(v.Time.Time)]; !ok {
+					pointsMap[key][convertTimeToX(v.Time.Time)] = &PerSec{
 						count: 0,
 						y:     0,
 					}
 				}
-				pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)].count += 1
-				pointsMap[makeKey(v.GetMethod(), r.String())][convertTimeToX(v.Time.Time)].y += mapLogToPerSec(v)
+				pointsMap[key][convertTimeToX(v.Time.Time)].count += 1
+				pointsMap[key][convertTimeToX(v.Time.Time)].y += mapLogToPerSec(v)
 				minTime = math.Min(minTime, convertTimeToX(v.Time.Time))
 				noMatch = false
 				break

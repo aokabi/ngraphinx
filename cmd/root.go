@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/aokabi/ngraphinx/lib"
+	graph "github.com/aokabi/ngraphinx/lib/graph"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -15,15 +17,21 @@ var (
 	rootCmd = &cobra.Command{
 		RunE: func(cmd *cobra.Command, args []string) error {
 			regStrs := strings.Split(aggregates, ",")
-			option := lib.NewOption(imageWidth, imageHeight, reqMinCountPerSec)
-			return lib.GenerateGraph(regStrs, nginxAccessLogFilepath, option)
+			option := graph.NewOption(imageWidth, imageHeight, reqMinCountPerSec)
+
+			regexps := make(lib.Regexps, len(regStrs))
+
+			for i, aggregate := range regStrs {
+				regexps[i] = regexp.MustCompile(aggregate)
+			}
+			return graph.GenerateGraph(regexps, nginxAccessLogFilepath, option)
 		},
 	}
 
 	nginxAccessLogFilepath string
 	aggregates             string
-	imageWidth             lib.Inch
-	imageHeight            lib.Inch
+	imageWidth             graph.Inch
+	imageHeight            graph.Inch
 	reqMinCountPerSec      int
 )
 

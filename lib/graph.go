@@ -94,10 +94,10 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 	if err != nil {
 		return err
 	}
-	rg := make([]*regexp.Regexp, len(aggregates))
+	regexps := make([]*regexp.Regexp, len(aggregates))
 
 	for i, aggregate := range aggregates {
-		rg[i] = regexp.MustCompile(aggregate)
+		regexps[i] = regexp.MustCompile(aggregate)
 	}
 
 	minTime := math.MaxFloat64
@@ -110,7 +110,7 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 		if err != nil {
 			continue
 		}
-		for _, r := range rg {
+		for _, r := range regexps {
 			if r.MatchString(endpoint) {
 				if _, ok := pointsMap[makeKey(v.GetMethod(), r.String())]; !ok {
 					pointsMap[makeKey(v.GetMethod(), r.String())] = make(map[float64]*PerSec)

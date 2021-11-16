@@ -1,4 +1,4 @@
-package lib
+package nginx
 
 import (
 	"bufio"
@@ -27,7 +27,7 @@ func (lt *logTime) UnmarshalText(t []byte) error {
 	return nil
 }
 
-type log struct {
+type Log struct {
 	Time    *logTime
 	Host    net.IP
 	Req     string
@@ -39,7 +39,7 @@ type log struct {
 	VHost   string
 }
 
-func (l *log) GetEndPoint() (string, error) {
+func (l *Log) GetEndPoint() (string, error) {
 	reqs := strings.Split(l.Req, " ")
 	if len(reqs) <= 1 {
 		return "", errors.New("endpoint error")
@@ -54,11 +54,11 @@ func (l *log) GetEndPoint() (string, error) {
 	return u.Path, nil
 }
 
-func (l *log) GetMethod() string {
+func (l *Log) GetMethod() string {
 	return strings.Split(l.Req, " ")[0]
 }
 
-func GetNginxAccessLog(filepath string) ([]log, error) {
+func GetNginxAccessLog(filepath string) ([]Log, error) {
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, err
@@ -67,9 +67,9 @@ func GetNginxAccessLog(filepath string) ([]log, error) {
 
 	fileScanner := bufio.NewScanner(file)
 
-	logs := make([]log, 0)
+	logs := make([]Log, 0)
 	for fileScanner.Scan() {
-		var log log
+		var log Log
 		err := ltsv.Unmarshal(fileScanner.Bytes(), &log)
 		if err != nil {
 			return nil, err

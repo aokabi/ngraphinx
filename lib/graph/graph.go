@@ -10,6 +10,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/aokabi/ngraphinx/lib/nginx"
 	"gonum.org/v1/plot/plotutil"
 
 	"gonum.org/v1/plot"
@@ -100,8 +101,8 @@ func convPointsMap2NamedPointsSlice(pointsMap pointsMap, pointCountSumMap map[fl
 }
 
 func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath string, option *Option,
-	mapLogToPerSec func(v log) float64, mapPerSecToY func(ps PerSec) float64) error {
-	logs, err := GetNginxAccessLog(nginxAccessLogFilepath)
+	mapLogToPerSec func(v nginx.Log) float64, mapPerSecToY func(ps PerSec) float64) error {
+	logs, err := nginx.GetNginxAccessLog(nginxAccessLogFilepath)
 	if err != nil {
 		return err
 	}
@@ -142,6 +143,7 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 		pointsMap[key][logTime].y += mapLogToPerSec(v)
 		minTime = math.Min(minTime, logTime)
 	}
+
 	pointCountSumMap := make(map[float64]int)
 	for _, v := range pointsMap {
 		for x, y := range v {
@@ -178,7 +180,7 @@ func generateReqTimeSumGraph(aggregates []string, nginxAccessLogFilepath string,
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
-	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v log) float64 {
+	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v nginx.Log) float64 {
 		return v.ReqTime
 	}, func(ps PerSec) float64 {
 		// return ps.y / ps.count // if average
@@ -200,7 +202,7 @@ func generateCountGraph(aggregates []string, nginxAccessLogFilepath string, opti
 	// legendは左上にする
 	p.Legend.Left = true
 	p.Legend.Top = true
-	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v log) float64 {
+	err := generateGraphImpl(p, aggregates, nginxAccessLogFilepath, option, func(v nginx.Log) float64 {
 		return 1.0
 	}, func(ps PerSec) float64 {
 		return ps.y

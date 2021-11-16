@@ -90,8 +90,6 @@ func convPointsMap2NamedPointsSlice(pointsMap pointsMap, pointCountSumMap map[fl
 
 func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath string, option *Option,
 	mapLogToPerSec func(v log) float64, mapPerSecToY func(ps PerSec) float64) error {
-	// 単位時間ごとのリクエスト数を数えるのが大変なので一旦マップにする
-	pointsMap := make(map[string]map[float64]*PerSec)
 	logs, err := GetNginxAccessLog(nginxAccessLogFilepath)
 	if err != nil {
 		return err
@@ -104,6 +102,8 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 
 	minTime := math.MaxFloat64
 
+	// 単位時間ごとのリクエスト数を数えるのが大変なので一旦マップにする
+	pointsMap := make(map[string]map[float64]*PerSec)
 	for _, v := range logs {
 		noMatch := true
 		endpoint, err := v.GetEndPoint()

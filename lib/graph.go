@@ -161,6 +161,7 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 	return nil
 }
 
+// generate graph of request time sum per second
 func generateReqTimeSumGraph(aggregates []string, nginxAccessLogFilepath string, option *Option) (*plot.Plot, error) {
 	// 表示項目の設定
 	p := plot.New()
@@ -182,6 +183,7 @@ func generateReqTimeSumGraph(aggregates []string, nginxAccessLogFilepath string,
 	return p, nil
 }
 
+// generate graph of request num per second
 func generateCountGraph(aggregates []string, nginxAccessLogFilepath string, option *Option) (*plot.Plot, error) {
 	// 表示項目の設定
 	p := plot.New()

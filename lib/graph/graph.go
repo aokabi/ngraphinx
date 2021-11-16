@@ -22,6 +22,7 @@ import (
 )
 
 type Inch = int
+type endpointKey string
 
 type Option struct {
 	imageWidth  font.Length
@@ -53,12 +54,12 @@ type PerSec struct {
 }
 
 type namedPoints struct {
-	name     string
+	name     endpointKey
 	points   plotter.XYs
 	countSum float64
 }
 
-type pointsMap = map[string]map[float64]*PerSec
+type pointsMap map[endpointKey]map[float64]*PerSec
 
 // x: float64, y: PerSec を plotter.XYsに詰め直す
 func convPointsMap2NamedPointsSlice(pointsMap pointsMap, pointCountSumMap map[float64]int, option *Option, minTime float64, mapPerSecToY func(PerSec) float64) []namedPoints {
@@ -96,14 +97,14 @@ func generateGraphImpl(p *plot.Plot, regexps lib.Regexps, nginxAccessLogFilepath
 	minTime := math.MaxFloat64
 
 	// 単位時間ごとのリクエスト数を数えるのが大変なので一旦マップにする
-	pointsMap := make(map[string]map[float64]*PerSec)
+	pointsMap := make(pointsMap)
 	for _, v := range logs {
 		endpoint, err := v.GetEndPoint()
 		if err != nil {
 			continue
 		}
 		r, find := regexps.FindMatchStringFirst(endpoint)
-		var key string
+		var key endpointKey
 		if find {
 			key = makeKey(v.GetMethod(), r.String())
 		} else {
@@ -144,14 +145,14 @@ func generateGraphImpl(p *plot.Plot, regexps lib.Regexps, nginxAccessLogFilepath
 		if err != nil {
 			return err
 		}
-		idx := randColorIdx(v.name)
+		idx := randColorIdx(string(v.name))
 		lpLine.Color = plotutil.Color(idx)
 		lpLine.Dashes = plotutil.Dashes(idx)
 		lpPoints.Color = plotutil.Color(idx)
 		lpPoints.Shape = plotutil.Shape(idx)
 
 		p.Add(lpLine, lpPoints)
-		p.Legend.Add(v.name, lpLine, lpPoints)
+		p.Legend.Add(string(v.name), lpLine, lpPoints)
 	}
 	return nil
 }
@@ -261,6 +262,6 @@ func convertTimeToX(t time.Time) float64 {
 	return float64(t.Hour()*3600 + t.Minute()*60 + t.Second())
 }
 
-func makeKey(httpMethod, endpoint string) string {
-	return fmt.Sprintf("%s %s", httpMethod, endpoint)
+func makeKey(httpMethod, endpoint string) endpointKey {
+	return endpointKey(fmt.Sprintf("%s %s", httpMethod, endpoint))
 }

@@ -121,38 +121,26 @@ func generateGraphImpl(p *plot.Plot, aggregates []string, nginxAccessLogFilepath
 			continue
 		}
 		r, find := regexps.findMatchStringFirst(endpoint)
-		// どれにもマッチしなかったら
+		var key string
 		if find {
-			key := makeKey(v.GetMethod(), r.String())
-			if _, ok := pointsMap[key]; !ok {
-				pointsMap[key] = make(map[float64]*PerSec)
-			}
-			logTime := convertTimeToX(v.Time.Time)
-			if _, ok := pointsMap[key][logTime]; !ok {
-				pointsMap[key][logTime] = &PerSec{
-					count: 0,
-					y:     0,
-				}
-			}
-			pointsMap[key][logTime].count += 1
-			pointsMap[key][logTime].y += mapLogToPerSec(v)
-			minTime = math.Min(minTime, logTime)
+			key = makeKey(v.GetMethod(), r.String())
 		} else {
-			key := makeKey(v.GetMethod(), endpoint)
-			if _, ok := pointsMap[key]; !ok {
-				pointsMap[key] = make(map[float64]*PerSec)
-			}
-			logTime := convertTimeToX(v.Time.Time)
-			if _, ok := pointsMap[key][logTime]; !ok {
-				pointsMap[key][logTime] = &PerSec{
-					count: 0,
-					y:     0,
-				}
-			}
-			pointsMap[key][logTime].count += 1
-			pointsMap[key][logTime].y += mapLogToPerSec(v)
-			minTime = math.Min(minTime, logTime)
+			// どれにもマッチしなかったら
+			key = makeKey(v.GetMethod(), endpoint)
 		}
+		if _, ok := pointsMap[key]; !ok {
+			pointsMap[key] = make(map[float64]*PerSec)
+		}
+		logTime := convertTimeToX(v.Time.Time)
+		if _, ok := pointsMap[key][logTime]; !ok {
+			pointsMap[key][logTime] = &PerSec{
+				count: 0,
+				y:     0,
+			}
+		}
+		pointsMap[key][logTime].count += 1
+		pointsMap[key][logTime].y += mapLogToPerSec(v)
+		minTime = math.Min(minTime, logTime)
 	}
 	pointCountSumMap := make(map[float64]int)
 	for _, v := range pointsMap {

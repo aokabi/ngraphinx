@@ -12,7 +12,7 @@ import (
 	ltsv "github.com/Songmu/go-ltsv"
 )
 
-const timeFormat = "02/Jan/2006:15:04:05 +0900"
+const timeFormat = "02/Jan/2006:15:04:05 -0700"
 
 type logTime struct {
 	time.Time

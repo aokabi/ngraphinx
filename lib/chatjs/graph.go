@@ -55,7 +55,13 @@ func GenerateGraph(regexps lib.Regexps, logFilePath string, option *Option) erro
 	}
 
 	// ここでHTMLを出力する
-	if _, err := io.Copy(os.Stdout, r); err != nil {
+	file, err := os.Create(fmt.Sprintf("%s.html", time.Now().Format(time.RFC3339)))
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, r); err != nil {
 		return err
 	}
 

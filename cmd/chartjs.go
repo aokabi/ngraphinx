@@ -4,8 +4,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/aokabi/ngraphinx/lib"
-	chartjs "github.com/aokabi/ngraphinx/lib/chatjs"
+	"github.com/aokabi/ngraphinx/v2/lib"
+	chartjs "github.com/aokabi/ngraphinx/v2/lib/chatjs"
 	"github.com/spf13/cobra"
 )
 

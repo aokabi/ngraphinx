@@ -220,7 +220,12 @@ func generateHTML(points pointsMap, option *Option) (io.Reader, error) {
                     }]
                 },
 				legend: {
-					position: 'chartArea'
+					position: 'left'
+				},
+				layout: {
+					padding: {
+						right: 50
+					}
 				}
             }
         });

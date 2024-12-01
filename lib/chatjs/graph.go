@@ -255,7 +255,11 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
 </head>
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"></script>
+    <button id="allHide2">hide all</button>
+    <button id="allShow2">show all</button>
     <canvas id ='myLineChart2'></canvas>
+    <button id="allHide">hide all</button>
+    <button id="allShow">show all</button>
     <canvas id ='myLineChart'></canvas>
     <script>
         var ctx = document.getElementById('myLineChart').getContext('2d');
@@ -335,6 +339,32 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                 }
             }
         });
+    </script>
+    <script>
+            const hideAllHandlerBuilder = function (chartInstance) {
+                return function (e) {
+                    chartInstance.data.datasets.forEach((e, i) => {
+                        const meta = chartInstance.getDatasetMeta(i);
+                        meta.hidden = true;
+                    });
+                    chartInstance.update();
+
+                }
+            }
+            const showAllHandlerBuilder = function (chartInstance) {
+                return function (e) {
+                    chartInstance.data.datasets.forEach((e, i) => {
+                        const meta = chartInstance.getDatasetMeta(i);
+                        meta.hidden = false;
+                    });
+                    chartInstance.update();
+
+                }
+            }
+        document.getElementById('allHide').onclick = hideAllHandlerBuilder(myLineChart);
+        document.getElementById('allShow').onclick = showAllHandlerBuilder(myLineChart);
+        document.getElementById('allHide2').onclick = hideAllHandlerBuilder(myLineChart2);
+        document.getElementById('allShow2').onclick = showAllHandlerBuilder(myLineChart2);
     </script>
 </body>
 </html>

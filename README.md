@@ -5,7 +5,7 @@ nginxのaccess.logを時系列のグラフにするcliツール
 ![](./docs/sample.png)
 
 ## install
-`go install github.com/aokabi/ngraphinx@latest`
+`go install github.com/aokabi/ngraphinx/v2@latest`
 
 ## usage
 ### image

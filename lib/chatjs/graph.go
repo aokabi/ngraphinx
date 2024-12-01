@@ -122,6 +122,7 @@ func makeKey(httpMethod, endpoint string) endpointKey {
 
 type templateValues struct {
 	DataSets []*dataset
+	Title string
 }
 
 type dataset struct {
@@ -182,6 +183,7 @@ func generateHTML(points pointsMap, option *Option) (io.Reader, error) {
 
 	values := templateValues{
 		DataSets: datasets,
+		Title:    "request count / sec",
 	}
 
 	t, err := template.New("chartjs").Parse(`
@@ -226,7 +228,11 @@ func generateHTML(points pointsMap, option *Option) (io.Reader, error) {
 					padding: {
 						right: 50
 					}
-				}
+				},
+                title: {
+                    display: true,
+					text: '{{.Title}}'
+                }
             }
         });
     </script>

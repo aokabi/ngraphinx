@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aokabi/ngraphinx/v2/lib"
 	chartjs "github.com/aokabi/ngraphinx/v2/lib/chatjs"
@@ -11,6 +13,7 @@ import (
 
 var (
 	maxDatasetNum int
+	outputFilePath         string
 )
 
 func init() {
@@ -18,6 +21,7 @@ func init() {
 
 	// define flags
 	chartjsCmd.PersistentFlags().IntVar(&maxDatasetNum, "maxdataset", 10, "max dataset num")
+	chartjsCmd.PersistentFlags().StringVarP(&outputFilePath, "output", "o", fmt.Sprintf("%s.html", time.Now().Format(time.RFC3339)), "output file path")
 }
 
 var chartjsCmd = &cobra.Command{
@@ -32,7 +36,7 @@ var chartjsCmd = &cobra.Command{
 			regexps[i] = regexp.MustCompile(aggregate)
 		}
 
-		option := chartjs.NewOption(maxDatasetNum)
+		option := chartjs.NewOption(maxDatasetNum, outputFilePath)
 
 		return chartjs.GenerateGraph(regexps, nginxAccessLogFilepath, option)
 	},

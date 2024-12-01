@@ -28,13 +28,15 @@ type Option struct {
 	imageWidth  font.Length
 	imageHeight font.Length
 	minCount    int
+	outputFilePath string
 }
 
-func NewOption(w, h Inch, minCount int) *Option {
+func NewOption(w, h Inch, minCount int, outputFilePath string) *Option {
 	return &Option{
 		imageWidth:  font.Length(w),
 		imageHeight: font.Length(h),
 		minCount:    minCount,
+		outputFilePath: outputFilePath,
 	}
 }
 
@@ -245,7 +247,7 @@ func GenerateGraph(aggregates lib.Regexps, nginxAccessLogFilepath string, option
 		}
 	}
 
-	w, err := os.Create(fmt.Sprintf("%s.png", time.Now().Format(time.RFC3339)))
+	w, err := os.Create(option.outputFilePath)
 	if err != nil {
 		return err
 	}

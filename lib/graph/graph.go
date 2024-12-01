@@ -9,8 +9,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/aokabi/ngraphinx/lib"
-	"github.com/aokabi/ngraphinx/lib/nginx"
+	"github.com/aokabi/ngraphinx/v2/lib"
+	"github.com/aokabi/ngraphinx/v2/lib/nginx"
 	"gonum.org/v1/plot/plotutil"
 
 	"gonum.org/v1/plot"

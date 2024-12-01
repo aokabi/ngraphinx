@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	graph "github.com/aokabi/ngraphinx/lib/graph"
+	graph "github.com/aokabi/ngraphinx/v2/lib/graph"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

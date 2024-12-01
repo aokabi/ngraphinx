@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/aokabi/ngraphinx/cmd"
+	"github.com/aokabi/ngraphinx/v2/cmd"
 )
 
 func main() {

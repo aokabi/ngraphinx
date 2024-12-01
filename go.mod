@@ -1,4 +1,4 @@
-module github.com/aokabi/ngraphinx
+module github.com/aokabi/ngraphinx/v2
 
 go 1.23
 

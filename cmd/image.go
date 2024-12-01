@@ -4,8 +4,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/aokabi/ngraphinx/lib"
-	graph "github.com/aokabi/ngraphinx/lib/graph"
+	"github.com/aokabi/ngraphinx/v2/lib"
+	graph "github.com/aokabi/ngraphinx/v2/lib/graph"
 	"github.com/spf13/cobra"
 )
 

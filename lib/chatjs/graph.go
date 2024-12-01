@@ -17,11 +17,13 @@ import (
 
 type Option struct {
 	maxDatasetNum int
+	outputFilePath string
 }
 
-func NewOption(maxDatasetNum int) *Option {
+func NewOption(maxDatasetNum int, outputFilePath string) *Option {
 	return &Option{
 		maxDatasetNum: maxDatasetNum,
+		outputFilePath: outputFilePath,
 	}
 }
 
@@ -55,7 +57,7 @@ func GenerateGraph(regexps lib.Regexps, logFilePath string, option *Option) erro
 	}
 
 	// ここでHTMLを出力する
-	file, err := os.Create(fmt.Sprintf("%s.html", time.Now().Format(time.RFC3339)))
+	file, err := os.Create(option.outputFilePath)
 	if err != nil {
 		return err
 	}

@@ -11,11 +11,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	imageWidth             graph.Inch
+	imageHeight            graph.Inch
+	reqMinCountPerSec      int
+)
+
 func init() {
 	rootCmd.AddCommand(imageCmd)
 
 	// define flags
 	imageCmd.PersistentFlags().StringVarP(&outputFilePath, "output", "o", fmt.Sprintf("%s.png", time.Now().Format(time.RFC3339)), "output file path")
+	imageCmd.PersistentFlags().IntVar(&imageWidth, "width", 10, "image width(Inch)")
+	imageCmd.PersistentFlags().IntVar(&imageHeight, "height", 10, "image height(Inch)")
+	imageCmd.PersistentFlags().IntVar(&reqMinCountPerSec, "mincount", 20, "required min request count per sec")
 }
 
 var imageCmd = &cobra.Command{

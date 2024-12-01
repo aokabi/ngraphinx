@@ -31,12 +31,25 @@ func GenerateGraph(regexps lib.Regexps, logFilePath string, option *Option) erro
 		return err
 	}
 
-	pointsMap, err := generateGraphImpl(logs, regexps)
+	// request count / sec
+	mapLogToPerSec := func(_ nginx.Log) float64 {
+		return 1.0
+	}
+	pointsMap, err := generateGraphImpl(logs, regexps, mapLogToPerSec)
 	if err != nil {
 		return err
 	}
 
-	r, err := generateHTML(pointsMap, option)
+	// request time sum / sec
+	mapLogToPerSec = func(l nginx.Log) float64 {
+		return l.ReqTime
+	}
+	pointsMap2, err := generateGraphImpl(logs, regexps, mapLogToPerSec)
+	if err != nil {
+		return err
+	}
+
+	r, err := generateHTML(pointsMap, pointsMap2, option)
 	if err != nil {
 		return err
 	}
@@ -59,10 +72,7 @@ type endpointKey string
 type pointsMap map[endpointKey]map[float64]*PerSec
 
 // nginx logを line graphに出力するために集計する
-func generateGraphImpl(logs []nginx.Log, regexps lib.Regexps) (pointsMap, error) {
-	mapLogToPerSec := func(_ nginx.Log) float64 {
-		return 1.0
-	}
+func generateGraphImpl(logs []nginx.Log, regexps lib.Regexps, mapLogToPerSec func(v nginx.Log) float64) (pointsMap, error) {
 	minTime := math.MaxFloat64
 
 	// 単位時間ごとのリクエスト数を数えるのが大変なので一旦マップにする
@@ -103,7 +113,7 @@ func generateGraphImpl(logs []nginx.Log, regexps lib.Regexps) (pointsMap, error)
 	}
 
 	// normalize
-	normalizedPointsMap := make(pointsMap) 
+	normalizedPointsMap := make(pointsMap)
 	for k, v := range pMap {
 		normalizedPointsMap[k] = make(map[float64]*PerSec, len(v))
 		for x, y := range v {
@@ -121,8 +131,10 @@ func makeKey(httpMethod, endpoint string) endpointKey {
 }
 
 type templateValues struct {
-	DataSets []*dataset
-	Title string
+	DataSets  []*dataset
+	Title     string
+	DataSets2 []*dataset
+	Title2    string
 }
 
 type dataset struct {
@@ -139,7 +151,8 @@ type point struct {
 
 var Colors = plotutil.DefaultColors
 
-func generateHTML(points pointsMap, option *Option) (io.Reader, error) {
+func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reader, error) {
+	// request count / sec
 	datasets := make([]*dataset, 0)
 	for k, v := range points {
 		data := make([]*point, 0)
@@ -186,6 +199,53 @@ func generateHTML(points pointsMap, option *Option) (io.Reader, error) {
 		Title:    "request count / sec",
 	}
 
+	{
+
+		// request time sum / sec
+		datasets := make([]*dataset, 0)
+		for k, v := range points2 {
+			data := make([]*point, 0)
+			for x, y := range v {
+				data = append(data, &point{
+					X: x,
+					Y: y.y,
+				})
+			}
+			sort.SliceStable(data, func(i, j int) bool {
+				return data[i].X < data[j].X
+			})
+
+			datasets = append(datasets, &dataset{
+				Label: string(k),
+				Data:  data,
+			})
+		}
+		sort.SliceStable(datasets, func(i, j int) bool {
+			isum := 0.0
+			jsum := 0.0
+			for _, p := range datasets[i].Data {
+				isum += p.Y
+			}
+			for _, p := range datasets[j].Data {
+				jsum += p.Y
+			}
+			return isum > jsum
+		})
+
+		// limit the number of datasets
+		if len(datasets) > option.maxDatasetNum {
+			datasets = datasets[:option.maxDatasetNum]
+		}
+
+		for i, d := range datasets {
+			r, g, b, _ := Colors[i%len(Colors)].RGBA()
+			d.BorderColor = fmt.Sprintf("rgba(%d, %d, %d, 1)", r>>8, g>>8, b>>8)
+			d.BackgroundColor = fmt.Sprintf("rgba(%d, %d, %d, 0.2)", r>>8, g>>8, b>>8)
+		}
+		values.Title2 = "request time sum / sec"
+		values.DataSets2 = datasets
+	}
+
 	t, err := template.New("chartjs").Parse(`
 <!-- show line graph -->
 
@@ -194,10 +254,12 @@ func generateHTML(points pointsMap, option *Option) (io.Reader, error) {
     <title>Line Chart</title>
 </head>
 <body>
-    <canvas id ='myLineChart'>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"></script>
+    <canvas id ='myLineChart2'></canvas>
+    <canvas id ='myLineChart'></canvas>
     <script>
         var ctx = document.getElementById('myLineChart').getContext('2d');
+        var ctx2 = document.getElementById('myLineChart2').getContext('2d');
         var myLineChart = new Chart(ctx, {
             type: 'scatter',
             data: {
@@ -235,9 +297,45 @@ func generateHTML(points pointsMap, option *Option) (io.Reader, error) {
                 }
             }
         });
-    </script>
 
-    </canvas>
+        var myLineChart2 = new Chart(ctx2, {
+            type: 'scatter',
+            data: {
+                datasets: [
+					{{range .DataSets2}}{
+                    label: '{{.Label}}',
+					type: 'line',
+                    data: [{{range .Data}}{x: {{.X}}, y: {{.Y}}},{{end}}],
+                    backgroundColor: '{{.BackgroundColor}}',
+                    borderColor: '{{.BorderColor}}',
+                    borderWidth: 1,
+					fill: false,
+                },{{end}}	
+					]
+            },
+            options: {
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }]
+                },
+				legend: {
+					position: 'left'
+				},
+				layout: {
+					padding: {
+						right: 50
+					}
+				},
+                title: {
+                    display: true,
+					text: '{{.Title2}}'
+                }
+            }
+        });
+    </script>
 </body>
 </html>
 	`)

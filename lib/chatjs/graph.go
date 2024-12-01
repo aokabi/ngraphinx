@@ -16,6 +16,13 @@ import (
 )
 
 type Option struct {
+	maxDatasetNum int
+}
+
+func NewOption(maxDatasetNum int) *Option {
+	return &Option{
+		maxDatasetNum: maxDatasetNum,
+	}
 }
 
 func GenerateGraph(regexps lib.Regexps, logFilePath string, option *Option) error {
@@ -29,7 +36,7 @@ func GenerateGraph(regexps lib.Regexps, logFilePath string, option *Option) erro
 		return err
 	}
 
-	r, err := generateHTML(pointsMap)
+	r, err := generateHTML(pointsMap, option)
 	if err != nil {
 		return err
 	}
@@ -131,7 +138,7 @@ type point struct {
 
 var Colors = plotutil.DefaultColors
 
-func generateHTML(points pointsMap) (io.Reader, error) {
+func generateHTML(points pointsMap, option *Option) (io.Reader, error) {
 	datasets := make([]*dataset, 0)
 	for k, v := range points {
 		data := make([]*point, 0)
@@ -161,6 +168,12 @@ func generateHTML(points pointsMap) (io.Reader, error) {
 		}
 		return isum > jsum
 	})
+
+	// limit the number of datasets
+	if len(datasets) > option.maxDatasetNum {
+		datasets = datasets[:option.maxDatasetNum]
+	}
+
 	for i, d := range datasets {
 		r, g, b, _ := Colors[i%len(Colors)].RGBA()
 		d.BorderColor = fmt.Sprintf("rgba(%d, %d, %d, 1)", r>>8, g>>8, b>>8)
@@ -207,6 +220,7 @@ func generateHTML(points pointsMap) (io.Reader, error) {
                     }]
                 },
 				legend: {
+					position: 'chartArea'
 				}
             }
         });

@@ -9,8 +9,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	maxDatasetNum int
+)
+
 func init() {
 	rootCmd.AddCommand(chartjsCmd)
+
+	// define flags
+	chartjsCmd.PersistentFlags().IntVar(&maxDatasetNum, "maxdataset", 10, "max dataset num")
 }
 
 var chartjsCmd = &cobra.Command{
@@ -25,6 +32,8 @@ var chartjsCmd = &cobra.Command{
 			regexps[i] = regexp.MustCompile(aggregate)
 		}
 
-		return chartjs.GenerateGraph(regexps, nginxAccessLogFilepath, nil)
+		option := chartjs.NewOption(maxDatasetNum)
+
+		return chartjs.GenerateGraph(regexps, nginxAccessLogFilepath, option)
 	},
 }

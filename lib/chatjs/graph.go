@@ -35,7 +35,7 @@ func GenerateGraph(regexps lib.Regexps, logFilePath string, option *Option) erro
 	mapLogToPerSec := func(_ nginx.Log) float64 {
 		return 1.0
 	}
-	pointsMap, err := generateGraphImpl(logs, regexps, mapLogToPerSec)
+	pointsMap := generateGraphImpl(logs, regexps, mapLogToPerSec)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func GenerateGraph(regexps lib.Regexps, logFilePath string, option *Option) erro
 	mapLogToPerSec = func(l nginx.Log) float64 {
 		return l.ReqTime
 	}
-	pointsMap2, err := generateGraphImpl(logs, regexps, mapLogToPerSec)
+	pointsMap2 := generateGraphImpl(logs, regexps, mapLogToPerSec)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ type endpointKey string
 type pointsMap map[endpointKey]map[float64]*PerSec
 
 // nginx logを line graphに出力するために集計する
-func generateGraphImpl(logs []nginx.Log, regexps lib.Regexps, mapLogToPerSec func(v nginx.Log) float64) (pointsMap, error) {
+func generateGraphImpl(logs []nginx.Log, regexps lib.Regexps, mapLogToPerSec func(v nginx.Log) float64) pointsMap {
 	minTime := math.MaxFloat64
 
 	// 単位時間ごとのリクエスト数を数えるのが大変なので一旦マップにする
@@ -126,7 +126,7 @@ func generateGraphImpl(logs []nginx.Log, regexps lib.Regexps, mapLogToPerSec fun
 			normalizedPointsMap[k][x-minTime] = y
 		}
 	}
-	return normalizedPointsMap, nil
+	return normalizedPointsMap
 }
 
 func convertTimeToX(t time.Time) float64 {

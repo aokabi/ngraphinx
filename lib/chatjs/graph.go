@@ -292,22 +292,27 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
         <canvas id='myLineChart'></canvas>
     </div>
      <script>
+        var charts = [];
         const highlightDataset = function(chartInstance, datasetIndex) {
-            chartInstance.data.datasets.forEach((dataset, index) => {
-                const meta = chartInstance.getDatasetMeta(index);
-                if (index === datasetIndex) {
-                    dataset.borderColor = dataset.originalBorderColor;
-                } else {
-                    dataset.borderColor = dataset.BackgroundColor;  // 薄く
-                }
+            const label = chartInstance.data.datasets[datasetIndex].label;
+            charts.forEach(chart => {
+                chart.data.datasets.forEach(dataset => {
+                    if (label === dataset.label) {
+                        dataset.borderColor = dataset.originalBorderColor;
+                    } else {
+                        dataset.borderColor = dataset.BackgroundColor;  // 薄く
+                    }
+                });
+                chart.update();
             });
-            chartInstance.update();
         };
         const resetHighlight = function(chartInstance) {
-            chartInstance.data.datasets.forEach((dataset, index) => {
-                dataset.borderColor = dataset.originalBorderColor;
+            charts.forEach(chart => {
+                chart.data.datasets.forEach((dataset, index) => {
+                    dataset.borderColor = dataset.originalBorderColor;
+                });
+                chart.update();
             });
-            chartInstance.update();
         };
         var ctx = document.getElementById('myLineChart').getContext('2d');
         var ctx2 = document.getElementById('myLineChart2').getContext('2d');
@@ -426,6 +431,8 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                 }
             }
         });
+        charts.push(myLineChart);
+        charts.push(myLineChart2);
         // 初期の色を保存
         myLineChart.data.datasets.forEach((dataset) => {
             dataset.originalBorderColor = dataset.borderColor;

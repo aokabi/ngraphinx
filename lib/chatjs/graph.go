@@ -196,8 +196,10 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
 		datasets = datasets[:option.maxDatasetNum]
 	}
 
+	labelToColorIndex := make(map[string]int)
 	for i, d := range datasets {
 		r, g, b, _ := Colors[i%len(Colors)].RGBA()
+		labelToColorIndex[d.Label] = i
 		d.BorderColor = fmt.Sprintf("rgba(%d, %d, %d, 1)", r>>8, g>>8, b>>8)
 		d.BackgroundColor = fmt.Sprintf("rgba(%d, %d, %d, 0.1)", r>>8, g>>8, b>>8)
 	}
@@ -246,7 +248,11 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
 		}
 
 		for i, d := range datasets {
-			r, g, b, _ := Colors[i%len(Colors)].RGBA()
+			idx := i
+			if idxtmp, ok := labelToColorIndex[d.Label]; ok {
+				idx = idxtmp
+			}
+			r, g, b, _ := Colors[idx%len(Colors)].RGBA()
 			d.BorderColor = fmt.Sprintf("rgba(%d, %d, %d, 1)", r>>8, g>>8, b>>8)
 			d.BackgroundColor = fmt.Sprintf("rgba(%d, %d, %d, 0.1)", r>>8, g>>8, b>>8)
 		}

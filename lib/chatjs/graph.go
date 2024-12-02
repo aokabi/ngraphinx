@@ -199,7 +199,7 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
 	for i, d := range datasets {
 		r, g, b, _ := Colors[i%len(Colors)].RGBA()
 		d.BorderColor = fmt.Sprintf("rgba(%d, %d, %d, 1)", r>>8, g>>8, b>>8)
-		d.BackgroundColor = fmt.Sprintf("rgba(%d, %d, %d, 0.2)", r>>8, g>>8, b>>8)
+		d.BackgroundColor = fmt.Sprintf("rgba(%d, %d, %d, 0.1)", r>>8, g>>8, b>>8)
 	}
 
 	values := templateValues{
@@ -248,7 +248,7 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
 		for i, d := range datasets {
 			r, g, b, _ := Colors[i%len(Colors)].RGBA()
 			d.BorderColor = fmt.Sprintf("rgba(%d, %d, %d, 1)", r>>8, g>>8, b>>8)
-			d.BackgroundColor = fmt.Sprintf("rgba(%d, %d, %d, 0.2)", r>>8, g>>8, b>>8)
+			d.BackgroundColor = fmt.Sprintf("rgba(%d, %d, %d, 0.1)", r>>8, g>>8, b>>8)
 		}
 		values.Title2 = "request time sum / sec"
 		values.DataSets2 = datasets
@@ -286,6 +286,23 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
         <canvas id='myLineChart'></canvas>
     </div>
      <script>
+        const highlightDataset = function(chartInstance, datasetIndex) {
+            chartInstance.data.datasets.forEach((dataset, index) => {
+                const meta = chartInstance.getDatasetMeta(index);
+                if (index === datasetIndex) {
+                    dataset.borderColor = dataset.originalBorderColor;
+                } else {
+                    dataset.borderColor = dataset.BackgroundColor;  // 薄く
+                }
+            });
+            chartInstance.update();
+        };
+        const resetHighlight = function(chartInstance) {
+            chartInstance.data.datasets.forEach((dataset, index) => {
+                dataset.borderColor = dataset.originalBorderColor;
+            });
+            chartInstance.update();
+        };
         var ctx = document.getElementById('myLineChart').getContext('2d');
         var ctx2 = document.getElementById('myLineChart2').getContext('2d');
         var myLineChart = new Chart(ctx, {
@@ -304,6 +321,9 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                 ]
             },
             options: {
+                animation: {
+                    duration: 100 // ms
+                },
                 maintainAspectRatio: false,
                 scales: {
                     yAxes: [{
@@ -313,6 +333,12 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                     }]
                 },
                 legend: {
+                    onHover: function(event, legendItem) {
+                        highlightDataset(myLineChart, legendItem.datasetIndex);
+                    },
+                    onLeave: function(event, legendItem) {
+                        resetHighlight(myLineChart);
+                    },
                     position: 'left'
                 },
                 layout: {
@@ -344,6 +370,9 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
             },
             options: {
                 maintainAspectRatio: false,
+                animation: {
+                    duration: 100 // ms
+                },
                 scales: {
                     yAxes: [{
                         ticks: {
@@ -352,6 +381,12 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                     }]
                 },
                 legend: {
+                    onHover: function(event, legendItem) {
+                        highlightDataset(myLineChart2, legendItem.datasetIndex);
+                    },
+                    onLeave: function(event, legendItem) {
+                        resetHighlight(myLineChart2);
+                    },
                     position: 'left'
                 },
                 layout: {
@@ -364,6 +399,13 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                     text: '{{.Title2}}'
                 }
             }
+        });
+        // 初期の色を保存
+        myLineChart.data.datasets.forEach((dataset) => {
+            dataset.originalBorderColor = dataset.borderColor;
+        });
+        myLineChart2.data.datasets.forEach((dataset) => {
+            dataset.originalBorderColor = dataset.borderColor;
         });
     </script>
     <script>

@@ -332,6 +332,16 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                         }
                     }]
                 },
+                tooltips: {
+                    enabled: true,
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            var dataset = data.datasets[tooltipItem.datasetIndex];
+                            var label = dataset.label || '';
+                            return label + ': ' + tooltipItem.yLabel;
+                        }
+                    }
+                },
                 legend: {
                     onHover: function(event, legendItem) {
                         highlightDataset(myLineChart, legendItem.datasetIndex);
@@ -379,6 +389,16 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                             beginAtZero: true
                         }
                     }]
+                },
+                tooltips: {
+                    enabled: true,
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            var dataset = data.datasets[tooltipItem.datasetIndex];
+                            var label = dataset.label || '';
+                            return label + ': ' + tooltipItem.yLabel;
+                        }
+                    }
                 },
                 legend: {
                     onHover: function(event, legendItem) {

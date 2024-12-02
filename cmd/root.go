@@ -13,7 +13,7 @@ var (
 		Use:     "ngraphinx",
 		Short:   "ngraphinx is a tool to generate graph from nginx access log",
 		Long:    "ngraphinx is a tool to generate graph from nginx access log",
-		Version: "2.0.3",
+		Version: "2.0.4",
 	}
 
 	nginxAccessLogFilepath string

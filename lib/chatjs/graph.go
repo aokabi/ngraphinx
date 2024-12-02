@@ -260,16 +260,32 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
 <html>
 <head>
     <title>Line Chart</title>
+    <style>
+        .chart-container {
+            width: 100%;
+            height: 42vh;  /* 半分よりすこしちいさめ */
+            box-sizing: border-box;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 </head>
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"></script>
     <button id="allHide2">hide all</button>
     <button id="allShow2">show all</button>
-    <canvas id ='myLineChart2'></canvas>
+    <div class="chart-container">
+        <canvas id='myLineChart2'></canvas>
+    </div>
+    <br />
     <button id="allHide">hide all</button>
     <button id="allShow">show all</button>
-    <canvas id ='myLineChart'></canvas>
-    <script>
+    <div class="chart-container">
+        <canvas id='myLineChart'></canvas>
+    </div>
+     <script>
         var ctx = document.getElementById('myLineChart').getContext('2d');
         var ctx2 = document.getElementById('myLineChart2').getContext('2d');
         var myLineChart = new Chart(ctx, {
@@ -288,6 +304,7 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                 ]
             },
             options: {
+                maintainAspectRatio: false,
                 scales: {
                     yAxes: [{
                         ticks: {
@@ -326,6 +343,7 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                 ]
             },
             options: {
+                maintainAspectRatio: false,
                 scales: {
                     yAxes: [{
                         ticks: {

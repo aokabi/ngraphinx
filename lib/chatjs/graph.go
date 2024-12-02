@@ -16,13 +16,13 @@ import (
 )
 
 type Option struct {
-	maxDatasetNum int
+	maxDatasetNum  int
 	outputFilePath string
 }
 
 func NewOption(maxDatasetNum int, outputFilePath string) *Option {
 	return &Option{
-		maxDatasetNum: maxDatasetNum,
+		maxDatasetNum:  maxDatasetNum,
 		outputFilePath: outputFilePath,
 	}
 }
@@ -276,16 +276,16 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
             type: 'scatter',
             data: {
                 datasets: [
-					{{range .DataSets}}{
+                {{range .DataSets}}{
                     label: '{{.Label}}',
-					type: 'line',
+                    type: 'line',
                     data: [{{range .Data}}{x: {{.X}}, y: {{.Y}}},{{end}}],
                     backgroundColor: '{{.BackgroundColor}}',
                     borderColor: '{{.BorderColor}}',
                     borderWidth: 1,
-					fill: false,
-                },{{end}}	
-					]
+                    fill: false,
+                },{{end}}
+                ]
             },
             options: {
                 scales: {
@@ -295,17 +295,17 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                         }
                     }]
                 },
-				legend: {
-					position: 'left'
-				},
-				layout: {
-					padding: {
-						right: 50
-					}
-				},
+                legend: {
+                    position: 'left'
+                },
+                layout: {
+                    padding: {
+                        right: 50
+                    }
+                },
                 title: {
                     display: true,
-					text: '{{.Title}}'
+                    text: '{{.Title}}'
                 }
             }
         });
@@ -314,16 +314,16 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
             type: 'scatter',
             data: {
                 datasets: [
-					{{range .DataSets2}}{
+                {{range .DataSets2}}{
                     label: '{{.Label}}',
-					type: 'line',
+                    type: 'line',
                     data: [{{range .Data}}{x: {{.X}}, y: {{.Y}}},{{end}}],
                     backgroundColor: '{{.BackgroundColor}}',
                     borderColor: '{{.BorderColor}}',
                     borderWidth: 1,
-					fill: false,
-                },{{end}}	
-					]
+                    fill: false,
+                },{{end}}
+                ]
             },
             options: {
                 scales: {
@@ -333,17 +333,17 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
                         }
                     }]
                 },
-				legend: {
-					position: 'left'
-				},
-				layout: {
-					padding: {
-						right: 50
-					}
-				},
+                legend: {
+                    position: 'left'
+                },
+                layout: {
+                    padding: {
+                        right: 50
+                    }
+                },
                 title: {
                     display: true,
-					text: '{{.Title2}}'
+                    text: '{{.Title2}}'
                 }
             }
         });
@@ -376,7 +376,7 @@ func generateHTML(points pointsMap, points2 pointsMap, option *Option) (io.Reade
     </script>
 </body>
 </html>
-	`)
+  `)
 	if err != nil {
 		return nil, err
 	}

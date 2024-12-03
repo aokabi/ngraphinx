@@ -15,13 +15,14 @@ var (
 	imageWidth             graph.Inch
 	imageHeight            graph.Inch
 	reqMinCountPerSec      int
+	outputPngFilePath      string
 )
 
 func init() {
 	rootCmd.AddCommand(imageCmd)
 
 	// define flags
-	imageCmd.PersistentFlags().StringVarP(&outputFilePath, "output", "o", fmt.Sprintf("%s.png", time.Now().Format(time.RFC3339)), "output file path")
+	imageCmd.PersistentFlags().StringVarP(&outputPngFilePath, "output", "o", fmt.Sprintf("%s.png", time.Now().Format(time.RFC3339)), "output file path")
 	imageCmd.PersistentFlags().IntVar(&imageWidth, "width", 10, "image width(Inch)")
 	imageCmd.PersistentFlags().IntVar(&imageHeight, "height", 10, "image height(Inch)")
 	imageCmd.PersistentFlags().IntVar(&reqMinCountPerSec, "mincount", 20, "required min request count per sec")
@@ -33,7 +34,7 @@ var imageCmd = &cobra.Command{
 	Long:  `Image commands`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		regStrs := strings.Split(aggregates, ",")
-		option := graph.NewOption(imageWidth, imageHeight, reqMinCountPerSec, outputFilePath)
+		option := graph.NewOption(imageWidth, imageHeight, reqMinCountPerSec, outputPngFilePath)
 
 		regexps := make(lib.Regexps, len(regStrs))
 
